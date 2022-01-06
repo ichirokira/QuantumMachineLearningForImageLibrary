@@ -59,8 +59,10 @@ def train(config):
         if num_qubits > config.MAX_NUM_QUBITS:
             """Since FRQI only requires 1 qubit for color, to reduce number of used qubits, we need to resize resolution 
                 of image"""
-            max_num_position_qubits = config.MAX_NUM_QUBITS - num_qubits
+            max_num_position_qubits = num_qubits-config.MAX_NUM_QUBITS
             rescaled_qubits = math.floor(max_num_position_qubits/2)
+            if rescaled_qubits < 1:
+                rescaled_qubits = 1
 
             print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
 
@@ -72,7 +74,7 @@ def train(config):
         x_train = preprocessFRQI(x_train)
         x_test = preprocessFRQI(x_test)
         qnn_layer = FRQI_Basis(config, image_shape=(H, W, C))
-    elif config.ENCODER == 'NEQR':
+    elif config.ENCODER == 'NERQ':
         num_qubits_row = (math.ceil(math.log2(H)))
         num_qubits_col = (math.ceil(math.log2(W)))
         color_qubits = 8
@@ -80,7 +82,8 @@ def train(config):
         new_scale = 255.0
         if num_qubits > config.MAX_NUM_QUBITS:
             print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
-            removed_qubits = (config.MAX_NUM_QUBITS - num_qubits) // 3
+            removed_qubits = (num_qubits - config.MAX_NUM_QUBITS) // 3
+
             if num_qubits_row+num_qubits_col - 2*removed_qubits < config.MIN_POS_QUBITS:
                 """if number of position qubits is smaller than threshold, rescale color"""
 
@@ -88,7 +91,7 @@ def train(config):
                     color_qubits -= 3*removed_qubits
                 else:
                     color_qubits = config.MIN_POS_QUBITS
-                new_scale = 2**color_qubits
+                new_scale = 2**color_qubits-1
                 print("[INFO] Rescale Color Range to {}".format(new_scale))
             else:
                 x_train = tf.image.resize(x_train[:], (2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)))
@@ -98,8 +101,8 @@ def train(config):
                     color_qubits -= removed_qubits
                 else:
                     color_qubits = config.MIN_POS_QUBITS
-                new_scale = 2**color_qubits
-                print("[INTO] Resize image from {} to {}. Rescale Color Range to".format([H, W],
+                new_scale = 2**color_qubits-1
+                print("[INTO] Resize image from {} to {}. Rescale Color Range to {}".format([H, W],
                                                                                          [2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)],
                                                                                          new_scale))
                 N, H, W, C = x_train.shape
@@ -108,6 +111,8 @@ def train(config):
         qnn_layer = NEQR_Basis(config, image_shape=(H, W, C), color_qubits=color_qubits)
 
     num_classes = len(config.CLASSES)
+    # x_train = x_train.numpy()
+    # x_test = x_test.numpy()
     x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config.CLASSES)
     x_test_filtered, y_test_filtered = filter_class(x_test, y_test, config.CLASSES)
 

@@ -1,8 +1,8 @@
 from modelling import *
-NAME = 'frqi_he_mnist'
+NAME = 'nerq_he_mnist'
 
 #-------------MODEL-----------------------
-ENCODER = "FRQI"
+ENCODER = "NERQ"
 TRANSFORMATION = "HE"
 NUM_BLOCKS = 3
 ENTANGLING_ARR = 'chain'
@@ -12,8 +12,8 @@ TYPE_ENTANGLES = 'cnot'
 DATASET = 'MNIST'
 CLASSES = [0, 1]
 #-----------------TRAINING CONFIGURATION---------------------
-MAX_NUM_QUBITS = 10
-MIN_COLOR_QUBITS = 1
+MAX_NUM_QUBITS = 12
+MIN_COLOR_QUBITS = 4
 MIN_POS_QUBITS = 6
 NUM_EPOCHES = 200
 BATCH_SIZE = 240

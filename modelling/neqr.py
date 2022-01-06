@@ -1,4 +1,5 @@
 import tensorflow as tf
+tf.config.run_functions_eagerly(True)
 import tensorflow_quantum as tfq
 from tensorflow.keras.utils import to_categorical
 
@@ -44,6 +45,7 @@ class NEQR_Basis(tf.keras.layers.Layer):
         # with tf.compat.v1.Session() as sess:
         #     sess.run(tf.compat.v1.global_variables_initializer())
         #     params = params.eval()
+        #print(params)
         a = tf.constant(params)
         proto_tensor = tf.make_tensor_proto(a)
         params_numpy = tf.make_ndarray(proto_tensor)
@@ -62,7 +64,9 @@ class NEQR_Basis(tf.keras.layers.Layer):
                         circuit.append(cirq.X(bits[b]))
                 # color_bin_string = format(params[i*self.image_shape[1]+j], "b").zfill(self.num_qubits_color)
                 color_bin_string = format(params_numpy[i * self.image_shape[1] + j], "b").zfill(self.num_qubits_color)
+                #print(color_bin_string)
                 for indx, cb in enumerate(color_bin_string[::-1]):
+                    #print(indx)
                     if cb == '1':
                         circuit.append(cirq.X(bits[self.num_qubits_row + self.num_qubits_col + indx]).controlled_by(
                             *bits[:(self.num_qubits - self.num_qubits_color)]))
@@ -96,7 +100,9 @@ class NEQR_Basis(tf.keras.layers.Layer):
         # inputs shapes: N, H, W, C
         inputs = tf.reshape(inputs, shape=[tf.shape(inputs)[0], -1])
         encoder_circuits = []
+
         for input in inputs:
+            #print(input.shape)
             encoder_circuits.append(tfq.convert_to_tensor([self.NEQR(self.bits, input)]))
         encoder_circuits_tensor = tf.stack(encoder_circuits)
         # circuit = cirq.Circuit()
