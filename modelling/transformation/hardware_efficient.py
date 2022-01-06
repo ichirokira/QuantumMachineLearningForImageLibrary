@@ -1,6 +1,6 @@
 import cirq
-from entangle import entangler
-from rotation import layerX, layerY, layerZ
+from modelling.transformation.entangle import entangler
+from modelling.transformation.rotation import layerX, layerY, layerZ
 
 def HE(bits,entangling_arrangement="chain", type_entangles='cnot', gen_params=None):
 

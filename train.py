@@ -117,9 +117,9 @@ def train(config):
         callbacks = None
 
     qnn_history = qdnn_model.fit(
-        x_train_filtered, y_test_filtered,
-        batch_size=32,
-        epochs=200,
+        x_train_filtered, y_train_filtered,
+        batch_size=config.BATCH_SIZE,
+        epochs=config.NUM_EPOCHES,
         verbose=1,
         validation_data=(x_test_filtered, y_test_filtered), callbacks=callbacks)
 
