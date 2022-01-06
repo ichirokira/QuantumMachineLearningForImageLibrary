@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 import shutil
@@ -43,6 +44,7 @@ def train(config):
         x_train = x_train[..., np.newaxis]
         x_test = x_test[..., np.newaxis]
 
+    N, H, W, C = x_train.shape
     x_train = tf.cast(x_train, tf.float32)
     x_test = tf.cast(x_test, tf.float32)
 
@@ -50,14 +52,60 @@ def train(config):
     print("Number of original test examples", len(x_test))
 
     if config.ENCODER == 'FRQI':
+        num_qubits_row = (math.ceil(math.log2(H)))
+        num_qubits_col = (math.ceil(math.log2(W)))
+        num_qubits = num_qubits_col+num_qubits_row +1
+
+        if num_qubits > config.MAX_NUM_QUBITS:
+            """Since FRQI only requires 1 qubit for color, to reduce number of used qubits, we need to resize resolution 
+                of image"""
+            max_num_position_qubits = config.MAX_NUM_QUBITS - num_qubits
+            rescaled_qubits = math.floor(max_num_position_qubits/2)
+
+            print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
+
+            print("[INFO] Reshape images from {} to {}".format([H,W], [2**(num_qubits_row-rescaled_qubits), 2**(num_qubits_col-rescaled_qubits)]))
+            x_train = tf.image.resize(x_train[:], (2**(num_qubits_row-rescaled_qubits), 2**(num_qubits_col-rescaled_qubits)))
+            x_test = tf.image.resize(x_test[:], (2**(num_qubits_row-rescaled_qubits), 2**(num_qubits_col-rescaled_qubits)))
+            N, H, W, C = x_train.shape
+
         x_train = preprocessFRQI(x_train)
         x_test = preprocessFRQI(x_test)
+        qnn_layer = FRQI_Basis(config, image_shape=(H, W, C))
     elif config.ENCODER == 'NEQR':
-        x_train = preprocessNEQR(x_train, new_scale=1)
-        x_test = preprocessNEQR(x_test, new_scale=1)
+        num_qubits_row = (math.ceil(math.log2(H)))
+        num_qubits_col = (math.ceil(math.log2(W)))
+        color_qubits = 8
+        num_qubits = num_qubits_col + num_qubits_row + color_qubits
+        new_scale = 255.0
+        if num_qubits > config.MAX_NUM_QUBITS:
+            print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
+            removed_qubits = (config.MAX_NUM_QUBITS - num_qubits) // 3
+            if num_qubits_row+num_qubits_col - 2*removed_qubits < config.MIN_POS_QUBITS:
+                """if number of position qubits is smaller than threshold, rescale color"""
 
+                if (color_qubits - 3*removed_qubits) > config.MIN_COLOR_QUBITS:
+                    color_qubits -= 3*removed_qubits
+                else:
+                    color_qubits = config.MIN_POS_QUBITS
+                new_scale = 2**color_qubits
+                print("[INFO] Rescale Color Range to {}".format(new_scale))
+            else:
+                x_train = tf.image.resize(x_train[:], (2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)))
+                x_test = tf.image.resize(x_test[:], (2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)))
 
-
+                if (color_qubits - removed_qubits) > config.MIN_COLOR_QUBITS:
+                    color_qubits -= removed_qubits
+                else:
+                    color_qubits = config.MIN_POS_QUBITS
+                new_scale = 2**color_qubits
+                print("[INTO] Resize image from {} to {}. Rescale Color Range to".format([H, W],
+                                                                                         [2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)],
+                                                                                         new_scale))
+                N, H, W, C = x_train.shape
+        x_train = preprocessNEQR(x_train, new_scale=new_scale)
+        x_test = preprocessNEQR(x_test, new_scale=new_scale)
+        qnn_layer = NEQR_Basis(config, image_shape=(H, W, C), color_qubits=color_qubits)
 
     num_classes = len(config.CLASSES)
     x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config.CLASSES)
@@ -72,7 +120,8 @@ def train(config):
     print("[INFO] Test Label Shape", y_test_filtered.shape)
 
     qdnn_model = tf.keras.models.Sequential()
-    qdnn_model.add(FRQI_Basis(config))
+
+    qdnn_model.add(qnn_layer)
     qdnn_model.add(tf.keras.layers.Dense(num_classes))
     qdnn_model.add(tf.keras.layers.Activation('softmax'))
 
@@ -108,7 +157,7 @@ def train(config):
                 self._log_gradients(epoch)
 
 
-    qdnn_model.compile(optimizer=tf.keras.optimizers.Adam(0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+    qdnn_model.compile(optimizer=tf.keras.optimizers.Adam(config.LR), loss='categorical_crossentropy', metrics=['accuracy'])
 
     if config.LOG_GRADIENTS:
         callbacks = [ExtendedTensorBoard(log_dir=os.path.join(config.LOG_DIR, "logs_grads"), histogram_freq=1, write_images=True,

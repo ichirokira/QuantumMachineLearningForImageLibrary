@@ -7,7 +7,7 @@ def preprocessFRQI(x):
     x = x/255.0
     x = x*np.pi/2
     return x
-def preprocessNEQR(x, new_scale=1.0):
+def preprocessNEQR(x, new_scale=255.0):
     """
     preprocessing data based on FRQI
     """

@@ -40,14 +40,14 @@ class MCQI_Gate(cirq.Gate):
         return "MCQI_R", "MCQI_G", "MCQI_B"
 
 class FRQI_Basis(tf.keras.layers.Layer):
-    def __init__(self, config, name=None, **kwangs):
+    def __init__(self, config, image_shape=(28,28,1), name=None, **kwangs):
         super(FRQI_Basis, self).__init__(name, **kwangs)
         self.learning_params = []
         self.config=config
         self.num_blocks = config.NUM_BLOCKS
         self.type_entangles = config.TYPE_ENTANGLES
         self.entangling_arrangement = config.ENTANGLING_ARR
-        self.image_shape = config.IMAGE_SHAPE
+        self.image_shape = image_shape
         self.num_qubits_row = (math.ceil(math.log2(self.image_shape[0])))
         self.num_qubits_col = (math.ceil(math.log2(self.image_shape[1])))
         if self.image_shape[2] == 1:
