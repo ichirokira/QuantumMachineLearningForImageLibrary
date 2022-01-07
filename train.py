@@ -163,8 +163,12 @@ def train(config):
 
 
     qdnn_model.compile(optimizer=tf.keras.optimizers.Adam(config.LR), loss='categorical_crossentropy', metrics=['accuracy'])
-
+    if not os.path.exists(config.LOG_DIR):
+        os.makedirs(config.LOG_DIR)
     if config.LOG_GRADIENTS:
+        log_grads_dir = os.path.join(config.LOG_DIR, "logs_grads")
+        if not os.path.exists(log_grads_dir):
+            os.makedirs(log_grads_dir)
         callbacks = [ExtendedTensorBoard(log_dir=os.path.join(config.LOG_DIR, "logs_grads"), histogram_freq=1, write_images=True,
                                          update_freq='epoch')]
     else:
@@ -182,6 +186,8 @@ def train(config):
 
     hist_df = pd.DataFrame(qnn_history.history)
     hist_csv_file = os.path.join(config.LOG_DIR, "result.csv")
+    if not os.path.exists(hist_csv_file):
+        os.makedirs(hist_csv_file)
     with open(hist_csv_file, mode='w') as f:
         hist_df.to_csv(f)
 
