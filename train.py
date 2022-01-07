@@ -138,8 +138,8 @@ def train(config):
                 # here we use test data to calculate the gradients
                 features = x_test_filtered[:100]
                 y_true = y_test_filtered[:100]
-                # features = tf.convert_to_tensor(features)
-                # y_true = tf.convert_to_tensor(y_true)
+                features = tf.convert_to_tensor(features)
+                y_true = tf.convert_to_tensor(y_true)
                 g.watch(features)
 
                 y_pred = self.model(features)  # forward-propagation
@@ -186,8 +186,8 @@ def train(config):
 
     hist_df = pd.DataFrame(qnn_history.history)
     hist_csv_file = os.path.join(config.LOG_DIR, "result.csv")
-    if not os.path.exists(hist_csv_file):
-        os.makedirs(hist_csv_file)
+    # if not os.path.exists(hist_csv_file):
+    #     os.makedirs(hist_csv_file)
     with open(hist_csv_file, mode='w') as f:
         hist_df.to_csv(f)
 
