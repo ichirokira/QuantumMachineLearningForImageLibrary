@@ -30,6 +30,9 @@ class NEQR_Basis(tf.keras.layers.Layer):
         self.num_qubits = self.num_qubits_row + self.num_qubits_col + self.num_qubits_color  # position qubits and color intensity qubit
         self.transformation = config.TRANSFORMATION
         self.bits = cirq.GridQubit.rect(1, self.num_qubits)
+        if self.transformation == "Farhi":
+            self.readout = cirq.GridQubit(-1, -1)
+            assert len(self.config.CLASSES) != 2, "Farhi Design only supports for binary classification"
         # self.bs = bs
         self.transform_circuit = self.QNNL_layer_gen(self.bits)
 
@@ -86,6 +89,8 @@ class NEQR_Basis(tf.keras.layers.Layer):
                                               entangling_arrangement=self.entangling_arrangement,
                                               type_entangles=self.type_entangles,
                                               gen_params=self._get_new_param)
+            elif self.transformation == "Farhi":
+                block = Farhi(bits, self.readout, gen_params=self._get_new_param)
             circuit.append(block)
         return circuit
 
@@ -127,11 +132,14 @@ class NEQR_Basis(tf.keras.layers.Layer):
         controller = tf.reshape(controller, shape=[tf.shape(inputs)[0], -1])
         # print(controller.shape)
         # input_data = tf.concat([inputs, controller], 1)
-        self.ops = []
-        for i in range(len(self.bits)):
-            self.ops.append(cirq.X(self.bits[i]))
-        QNNL_output = tfq.layers.Expectation()(full_circuits_tensor, symbol_names=self.learning_params,
-                                               symbol_values=controller, operators=self.ops)
+        if self.transformation == "Farhi":
+            self.ops = cirq.Z(self.readout)
+        else:
+            self.ops = []
+            for i in range(len(self.bits)):
+                self.ops.append(cirq.X(self.bits[i]))
+            QNNL_output = tfq.layers.Expectation()(full_circuits_tensor, symbol_names=self.learning_params,
+                                                   symbol_values=controller, operators=self.ops)
 
         # QNNL_output = tf.keras.layers.Dense(self.num_classes)(QNNL_output)
         # QNNL_output = tf.keras.activations.softmax(QNNL_output, axis=1)

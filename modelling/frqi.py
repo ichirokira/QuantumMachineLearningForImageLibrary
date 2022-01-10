@@ -96,6 +96,9 @@ class FRQI_Basis(tf.keras.layers.Layer):
         return circuit
     def QNNL_layer_gen(self, input_dim):
         bits = cirq.GridQubit.rect(1, self.num_qubits)
+        if self.transformation == "Farhi":
+            readout = cirq.GridQubit(-1, -1)
+            assert len(self.config.CLASSES) != 2, "Farhi Design only supports for binary classification"
         input_params = []
         for i in range(input_dim[0]):
             for j in range(input_dim[1]):
@@ -114,14 +117,20 @@ class FRQI_Basis(tf.keras.layers.Layer):
                 block = HE_Color_Independence(bits[:-self.image_color_base], bits[-self.image_color_base: ],
                                               entangling_arrangement=self.entangling_arrangement, type_entangles=self.type_entangles,
                                               gen_params=self._get_new_param)
+            elif self.transformation == "Farhi":
+                block = Farhi(bits, readout, gen_params=self._get_new_param)
+
             full_circuit.append(block)
 
         self.circuit = full_circuit
         # print(self.circuit)
         self.params = input_params + self.learning_params
-        self.ops = []
-        for i in range(len(bits)):
-            self.ops.append(cirq.X(bits[i]))
+        if self.transformation == "Farhi":
+            self.ops = cirq.Z(readout)
+        else:
+            self.ops = []
+            for i in range(len(bits)):
+                self.ops.append(cirq.X(bits[i]))
 
     def build(self, input_shape):
         self.kernel = self.add_weight(name='kernel', shape=[len(self.learning_params), ],

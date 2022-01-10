@@ -127,8 +127,9 @@ def train(config):
     qdnn_model = tf.keras.models.Sequential()
 
     qdnn_model.add(qnn_layer)
-    qdnn_model.add(tf.keras.layers.Dense(num_classes))
-    qdnn_model.add(tf.keras.layers.Activation('softmax'))
+    if config.TRANSFORMATION != "Farhi":
+        qdnn_model.add(tf.keras.layers.Dense(num_classes))
+        qdnn_model.add(tf.keras.layers.Activation('softmax'))
 
     class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
         def _log_gradients(self, epoch):
@@ -161,8 +162,11 @@ def train(config):
             if self.histogram_freq and epoch % self.histogram_freq == 0:
                 self._log_gradients(epoch)
 
-
-    qdnn_model.compile(optimizer=tf.keras.optimizers.Adam(config.LR), loss='categorical_crossentropy', metrics=['accuracy'])
+    if config.TRANSFORMATION == "Farhi":
+        qdnn_model.compile(loss=tf.keras.losses.BinaryCrossentropy(from_logits=True), optimizer=tf.keras.optimizers.Adam(config.LR),
+                           metrics=["accuracy"])
+    else:
+        qdnn_model.compile(optimizer=tf.keras.optimizers.Adam(config.LR), loss='categorical_crossentropy', metrics=['accuracy'])
     if not os.path.exists(config.LOG_DIR):
         os.makedirs(config.LOG_DIR)
     if config.LOG_GRADIENTS:
