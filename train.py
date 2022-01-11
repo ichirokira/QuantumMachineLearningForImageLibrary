@@ -89,10 +89,21 @@ def train(config):
 
                 if (color_qubits - 3*removed_qubits) > config.MIN_COLOR_QUBITS:
                     color_qubits -= 3*removed_qubits
+                    new_scale = 2 ** color_qubits - 1
+                    print("[INFO] Rescale Color Range to {}".format(new_scale + 1))
                 else:
-                    color_qubits = config.MIN_POS_QUBITS
-                new_scale = 2**color_qubits-1
-                print("[INFO] Rescale Color Range to {}".format(new_scale))
+                    color_qubits = config.MIN_COLOR_QUBITS
+                    pos_qubits = (config.MAX_NUM_QUBITS - color_qubits) // 2
+                    x_train = tf.image.resize(x_train[:], (2 ** (pos_qubits), 2 ** (pos_qubits)))
+                    x_test = tf.image.resize(x_test[:], (2 ** (pos_qubits), 2 ** (pos_qubits)))
+                    new_scale = 2 ** color_qubits - 1
+                    print("[INTO] Resize image from {} to {}. Rescale Color Range to {}".format([H, W],
+                                                                                                [2 ** (pos_qubits),
+                                                                                                 2 ** (pos_qubits)],
+                                                                                                new_scale + 1))
+                N, H, W, C = x_train.shape
+                # new_scale = 2**color_qubits-1
+                # print("[INFO] Rescale Color Range to {}".format(new_scale+1))
             else:
                 x_train = tf.image.resize(x_train[:], (2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)))
                 x_test = tf.image.resize(x_test[:], (2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)))
@@ -100,11 +111,11 @@ def train(config):
                 if (color_qubits - removed_qubits) > config.MIN_COLOR_QUBITS:
                     color_qubits -= removed_qubits
                 else:
-                    color_qubits = config.MIN_POS_QUBITS
+                    color_qubits = config.MIN_COLOR_QUBITS
                 new_scale = 2**color_qubits-1
                 print("[INTO] Resize image from {} to {}. Rescale Color Range to {}".format([H, W],
                                                                                          [2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)],
-                                                                                         new_scale))
+                                                                                         new_scale+1))
                 N, H, W, C = x_train.shape
         x_train = preprocessNEQR(x_train, new_scale=new_scale)
         x_test = preprocessNEQR(x_test, new_scale=new_scale)
