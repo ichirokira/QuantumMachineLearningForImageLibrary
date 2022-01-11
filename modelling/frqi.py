@@ -98,7 +98,8 @@ class FRQI_Basis(tf.keras.layers.Layer):
         bits = cirq.GridQubit.rect(1, self.num_qubits)
         if self.transformation == "Farhi":
             readout = cirq.GridQubit(-1, -1)
-            assert len(self.config.CLASSES) != 2, "Farhi Design only supports for binary classification"
+            num_classes = len(self.config.CLASSES)
+            assert num_classes == 2, "Farhi Design only supports for binary classification"
         input_params = []
         for i in range(input_dim[0]):
             for j in range(input_dim[1]):

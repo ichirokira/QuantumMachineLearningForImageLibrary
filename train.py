@@ -118,8 +118,9 @@ def train(config):
 
     print("[INFO] Training image shape: ", x_train_filtered.shape)
     print("[INFO] Test image shape: ", x_test_filtered.shape)
-    y_train_filtered = to_categorical(y_train_filtered, num_classes)
-    y_test_filtered = to_categorical(y_test_filtered, num_classes)
+    if config.TRANSFORMATION != "Farhi":
+        y_train_filtered = to_categorical(y_train_filtered, num_classes)
+        y_test_filtered = to_categorical(y_test_filtered, num_classes)
 
     print("[INFO] Training Label Shape", y_train_filtered.shape)
     print("[INFO] Test Label Shape", y_test_filtered.shape)
