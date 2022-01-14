@@ -43,6 +43,7 @@ def add_gradient_noise(BaseOptimizer, keras=None):
     on where the optimizer was imported from. You can also specify which Keras
     to use by passing the imported module.
     """
+
     if keras is None:
         # Import it automatically. Try to guess from the optimizer's module
         if hasattr(BaseOptimizer, '__module__') and BaseOptimizer.__module__.startswith('keras'):

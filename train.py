@@ -33,6 +33,22 @@ def filter_class(x, y, classes):
 
     return x, y
 
+
+def filter_nerq(x, y, classes, num_samples=1000):
+    keep0 = (y == classes[0])
+    keepx = keep0.reshape(keep0.shape[0])
+    x0, y0 = x[keepx], y[keep0]
+
+    keep1 = (y == classes[1])
+    keepx = keep1.reshape(keep1.shape[0])
+    x1, y1 = x[keepx], y[keep1]
+
+    x = np.concatenate([x0[:num_samples], x1[:num_samples]], 0)
+    y = np.concatenate([y0[:num_samples], y1[:num_samples]], 0)
+    idx = np.random.permutation(len(x))
+    x, y = x[idx], y[idx]
+    return x, y
+
 def train(config):
     if config.DATASET == 'CIFAR10':
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
@@ -113,7 +129,7 @@ def train(config):
                 else:
                     color_qubits = config.MIN_COLOR_QUBITS
                 new_scale = 2**color_qubits-1
-                print("[INTO] Resize image from {} to {}. Rescale Color Range to {}".format([H, W],
+                print("[INFO] Resize image from {} to {}. Rescale Color Range to {}".format([H, W],
                                                                                          [2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)],
                                                                                          new_scale+1))
                 N, H, W, C = x_train.shape
@@ -124,8 +140,12 @@ def train(config):
     num_classes = len(config.CLASSES)
     # x_train = x_train.numpy()
     # x_test = x_test.numpy()
-    x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config.CLASSES)
-    x_test_filtered, y_test_filtered = filter_class(x_test, y_test, config.CLASSES)
+    if config.ENCODER == "NERQ":
+        x_train_filtered, y_train_filtered = filter_nerq(x_train, y_train, config.CLASSES, 1000)
+        x_test_filtered, y_test_filtered = filter_nerq(x_test, y_test, config.CLASSES, 500)
+    else:
+        x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config.CLASSES)
+        x_test_filtered, y_test_filtered = filter_class(x_test, y_test, config.CLASSES)
 
     print("[INFO] Training image shape: ", x_train_filtered.shape)
     print("[INFO] Test image shape: ", x_test_filtered.shape)
