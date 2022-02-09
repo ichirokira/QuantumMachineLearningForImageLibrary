@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from tensorflow.keras.utils import to_categorical
 
+
 from configs.utils import parse_config
 from modelling import *
 import warnings
@@ -138,6 +139,8 @@ def train(config):
         qnn_layer = NEQR_Basis(config, image_shape=(H, W, C), color_qubits=color_qubits)
 
     num_classes = len(config.CLASSES)
+    if config.MEASUREMENT:
+        assert num_classes == 2, "Single Measurement only supports for binary classification"
     # x_train = x_train.numpy()
     # x_test = x_test.numpy()
     if config.ENCODER == "NERQ":
@@ -149,7 +152,7 @@ def train(config):
 
     print("[INFO] Training image shape: ", x_train_filtered.shape)
     print("[INFO] Test image shape: ", x_test_filtered.shape)
-    if config.TRANSFORMATION != "Farhi":
+    if config.TRANSFORMATION != "Farhi" and config.MEASUREMENT != 'single':
         y_train_filtered = to_categorical(y_train_filtered, num_classes)
         y_test_filtered = to_categorical(y_test_filtered, num_classes)
 
@@ -159,9 +162,16 @@ def train(config):
     qdnn_model = tf.keras.models.Sequential()
 
     qdnn_model.add(qnn_layer)
+
     if config.TRANSFORMATION != "Farhi":
-        qdnn_model.add(tf.keras.layers.Dense(num_classes))
-        qdnn_model.add(tf.keras.layers.Activation('softmax'))
+        if config.MEASUREMENT == 'selection':
+            qdnn_model.add(tf.keras.layers.Activation('softmax'))
+
+        elif config.MEASUREMENT == 'full':
+            qdnn_model.add(tf.keras.layers.Dense(num_classes))
+            qdnn_model.add(tf.keras.layers.Activation('softmax'))
+    # trainableParams = np.sum([np.prod(v.get_shape()) for v in qdnn_model.trainable_weights])
+    print("[INFO] Trainable Params: ", len(qnn_layer.learning_params))
 
     class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
         def _log_gradients(self, epoch):
@@ -185,30 +195,46 @@ def train(config):
                         weights.name.replace(':', '_') + '_grads', data=grads, step=epoch)
 
             writer.flush()
+        def _log_values(self, epoch):
+            writer = self._writers['train']
 
+            with writer.as_default(), tf.GradientTape() as g:
+                # here we use test data to calculate the gradients
+                features = x_test_filtered[:100]
+                qnn = qdnn_model.get_layer(index=0)
+                values = qnn(features)
+
+                values = tf.math.reduce_mean(values, axis=0)
+                print(values.shape)
+                # In eager mode, grads does not have name, so we get names from model.trainable_weights
+                for i, v in enumerate(values):
+                    tf.summary.histogram("qubits {}".format(i), data=v, step=epoch)
+
+            writer.flush()
         def on_epoch_end(self, epoch, logs=None):
             # This function overwrites the on_epoch_end in tf.keras.callbacks.TensorBoard
             # but we do need to run the original on_epoch_end, so here we use the super function.
             super(ExtendedTensorBoard, self).on_epoch_end(epoch, logs=logs)
 
             if self.histogram_freq and epoch % self.histogram_freq == 0:
-                self._log_gradients(epoch)
+                if config.LOG_GRADIENTS:
+                    self._log_gradients(epoch)
+                if config.LOG_OUTPUT_VALUES:
+                    self._log_values(epoch)
 
-    if config.TRANSFORMATION == "Farhi":
+    if config.TRANSFORMATION == "Farhi" or config.MEASUREMENT == 'single':
         qdnn_model.compile(loss=tf.keras.losses.BinaryCrossentropy(from_logits=True), optimizer=tf.keras.optimizers.Adam(config.LR),
                            metrics=["accuracy"])
     else:
         qdnn_model.compile(optimizer=tf.keras.optimizers.Adam(config.LR), loss='categorical_crossentropy', metrics=['accuracy'])
     if not os.path.exists(config.LOG_DIR):
         os.makedirs(config.LOG_DIR)
-    if config.LOG_GRADIENTS:
-        log_grads_dir = os.path.join(config.LOG_DIR, "logs_grads")
-        if not os.path.exists(log_grads_dir):
-            os.makedirs(log_grads_dir)
-        callbacks = [ExtendedTensorBoard(log_dir=os.path.join(config.LOG_DIR, "logs_grads"), histogram_freq=1, write_images=True,
+
+    log_grads_dir = os.path.join(config.LOG_DIR, "logs")
+    if not os.path.exists(log_grads_dir):
+        os.makedirs(log_grads_dir)
+    callbacks = [ExtendedTensorBoard(log_dir=os.path.join(config.LOG_DIR, "logs"), histogram_freq=1, write_images=True,
                                          update_freq='epoch')]
-    else:
-        callbacks = None
 
     qnn_history = qdnn_model.fit(
         x_train_filtered, y_train_filtered,

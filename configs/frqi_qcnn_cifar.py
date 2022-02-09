@@ -1,15 +1,15 @@
 from modelling import *
-NAME = 'nerq_he_mnist'
+NAME = 'frqi_qcnn_cifar'
 
 #-------------MODEL-----------------------
-ENCODER = "NERQ"
-TRANSFORMATION = "HE"
-NUM_BLOCKS = 3
+ENCODER = "FRQI"
+TRANSFORMATION = "QCNN"
+NUM_BLOCKS = 1
 ENTANGLING_ARR = 'chain'
 TYPE_ENTANGLES = 'cnot'
 
 #-----------------DATASET--------------------
-DATASET = 'MNIST'
+DATASET = 'CIFAR10'
 CLASSES = [0, 1]
 #-----------------TRAINING CONFIGURATION---------------------
 MAX_NUM_QUBITS = 12

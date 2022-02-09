@@ -129,10 +129,23 @@ class FRQI_Basis(tf.keras.layers.Layer):
         if self.transformation == "Farhi":
             self.ops = cirq.Z(readout)
         else:
-            self.ops = []
-            for i in range(len(bits)):
-                self.ops.append(cirq.X(bits[i]))
+            if self.config.MEASUREMENT == 'single':
+                self.ops = cirq.X(bits[-1])
+                # self.ops = 0
+                # for i in range(len(bits)):
+                #     self.ops += cirq.X(bits[i]) * 1 / len(bits)
+            elif self.config.MEASUREMENT == 'selection':
+                self.ops = []
+                for i in range(20):
+                    self.ops.append(cirq.X(bits[-1]))
 
+            else:
+                self.ops = []
+                for i in range(len(bits)):
+                    self.ops.append(cirq.X(bits[i]))
+                # self.ops = []
+                # for i in range(20):
+                #     self.ops.append(cirq.X(bits[-1]))
     def build(self, input_shape):
         self.kernel = self.add_weight(name='kernel', shape=[len(self.learning_params), ],
                                       initializer=tf.keras.initializers.glorot_normal())

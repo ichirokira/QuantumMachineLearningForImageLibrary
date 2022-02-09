@@ -135,9 +135,18 @@ class NEQR_Basis(tf.keras.layers.Layer):
         if self.transformation == "Farhi":
             self.ops = cirq.Z(self.readout)
         else:
-            self.ops = []
-            for i in range(len(self.bits)):
-                self.ops.append(cirq.X(self.bits[i]))
+            if self.config.MEASUREMENT == 'single':
+                self.ops = 0
+                for i in range(self.num_qubits_color):
+                    self.ops += cirq.X(self.bits[i])
+            elif self.config.MEASUREMENT == 'selection':
+                self.ops = []
+                self.ops.append(cirq.X(bits[0]))
+                self.ops.append(cirq.X(bits[1]))
+            else:
+                self.ops = []
+                for i in range(len(self.bits)):
+                    self.ops.append(cirq.X(self.bits[i]))
         QNNL_output = tfq.layers.Expectation()(full_circuits_tensor, symbol_names=self.learning_params,
                                                    symbol_values=controller, operators=self.ops)
 
