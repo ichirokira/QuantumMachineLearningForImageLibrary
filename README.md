@@ -21,6 +21,7 @@ TRANSFORMATION = "HE" # Name of your Encoder methods (Please check Current Suppo
 NUM_BLOCKS = 3 # Number of Transformation layers
 ENTANGLING_ARR = 'chain' # Arrangement of entangle gate ("chain", "all")
 TYPE_ENTANGLES = 'cnot' # Types of entangle gate ("cnot", "cphase", "sqrtiswap")
+MEASUREMENT = 'full' # Type of measurement ("full"-use all qubits, "single"-use only color qubit)
 
 #-----------------DATASET--------------------
 DATASET = 'MNIST' # Name of Dataset (Please check Current Support for details)
@@ -35,7 +36,7 @@ BATCH_SIZE = 240 # Batch Size for training process
 LR = 0.001 # Learning rate
 LOG_DIR = "./results/{}_{}_{}_{}/".format(ENCODER, TRANSFORMATION, DATASET, NUM_BLOCKS) # log directory
 LOG_GRADIENTS = False # Whether log the gradient details or not
-
+LOG_OUTPUT_VALUES = True # Whether log the measurement output of each qubit or not
 
 ```
 ## Current Support 
