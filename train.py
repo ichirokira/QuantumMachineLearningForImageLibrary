@@ -31,7 +31,8 @@ def filter_class(x, y, classes):
 
     keepx = keep.reshape(keep.shape[0])
     x, y = x[keepx], y[keep]
-
+    for i in range(len(classes)):
+        y[y==classes[i]] = i
     return x, y
 
 
@@ -39,18 +40,21 @@ def filter_nerq(x, y, classes, num_samples=1000):
     keep0 = (y == classes[0])
     keepx = keep0.reshape(keep0.shape[0])
     x0, y0 = x[keepx], y[keep0]
-
     keep1 = (y == classes[1])
     keepx = keep1.reshape(keep1.shape[0])
     x1, y1 = x[keepx], y[keep1]
-
     x = np.concatenate([x0[:num_samples], x1[:num_samples]], 0)
     y = np.concatenate([y0[:num_samples], y1[:num_samples]], 0)
     idx = np.random.permutation(len(x))
     x, y = x[idx], y[idx]
+    for i in range(len(classes)):
+        y[y==classes[i]] = i
     return x, y
 
+
+
 def train(config):
+
     if config.DATASET == 'CIFAR10':
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
@@ -71,7 +75,7 @@ def train(config):
     if config.ENCODER == 'FRQI':
         num_qubits_row = (math.ceil(math.log2(H)))
         num_qubits_col = (math.ceil(math.log2(W)))
-        num_qubits = num_qubits_col+num_qubits_row +1
+        num_qubits = num_qubits_col+num_qubits_row + 1
 
         if num_qubits > config.MAX_NUM_QUBITS:
             """Since FRQI only requires 1 qubit for color, to reduce number of used qubits, we need to resize resolution 

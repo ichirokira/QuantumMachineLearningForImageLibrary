@@ -1,14 +1,13 @@
 from modelling import *
-NAME = 'frqi_he_cifar_single_measurement'
+NAME = 'frqi_farhi_cifar'
 
 #-------------MODEL-----------------------
 ENCODER = "FRQI"
-TRANSFORMATION = "HE"
-NUM_BLOCKS = 5
+TRANSFORMATION = "Farhi"
+NUM_BLOCKS = 1
 ENTANGLING_ARR = 'chain'
 TYPE_ENTANGLES = 'cnot'
-MEASUREMENT = 'full'
-
+MEASUREMENT = "full"
 #-----------------DATASET--------------------
 DATASET = 'CIFAR10'
 CLASSES = [4, 5]
@@ -22,3 +21,4 @@ LR = 0.001
 LOG_DIR = "./results/{}_{}_{}_{}_{}/".format(ENCODER, TRANSFORMATION, DATASET, NUM_BLOCKS, MEASUREMENT)
 LOG_GRADIENTS = True
 LOG_OUTPUT_VALUES = True
+

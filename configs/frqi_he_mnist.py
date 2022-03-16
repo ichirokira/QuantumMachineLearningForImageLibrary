@@ -7,6 +7,7 @@ TRANSFORMATION = "HE"
 NUM_BLOCKS = 3
 ENTANGLING_ARR = 'chain'
 TYPE_ENTANGLES = 'cnot'
+MEASUREMENT = "full"
 
 #-----------------DATASET--------------------
 DATASET = 'MNIST'
@@ -18,6 +19,6 @@ MIN_POS_QUBITS = 6
 NUM_EPOCHES = 200
 BATCH_SIZE = 240
 LR = 0.001
-LOG_DIR = "./results/{}_{}_{}_{}/".format(ENCODER, TRANSFORMATION, DATASET, NUM_BLOCKS)
+LOG_DIR = "./results/{}_{}_{}_{}_{}/".format(ENCODER, TRANSFORMATION, DATASET, NUM_BLOCKS, MEASUREMENT)
 LOG_GRADIENTS = False
-
+LOG_OUTPUT_VALUES = True
