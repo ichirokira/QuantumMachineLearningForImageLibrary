@@ -20,7 +20,7 @@ def Pyramid_Transform(position_bits, color_bits, num_row_bits, num_col_bits, gen
                         circuit.append(cirq.X(position_bits[num_row_bits+j]))
 
                 circuit.append(
-                    cirq.ry(2*gen_params()).on(color_bits).controlled_by(*controlled_bits)
+                    cirq.ry(2*gen_params()).on(*color_bits).controlled_by(*controlled_bits)
                 )
 
                 for i, b in enumerate(r_binary):
@@ -31,6 +31,6 @@ def Pyramid_Transform(position_bits, color_bits, num_row_bits, num_col_bits, gen
                         circuit.append(cirq.X(position_bits[num_row_bits+j]))
 
     circuit.append(
-        cirq.ry(2 * gen_params()).on(color_bits)
+        cirq.ry(2 * gen_params()).on(*color_bits)
     )
     return circuit
