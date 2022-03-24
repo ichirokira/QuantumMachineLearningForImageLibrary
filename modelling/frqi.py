@@ -120,6 +120,10 @@ class FRQI_Basis(tf.keras.layers.Layer):
                                               gen_params=self._get_new_param)
             elif self.transformation == "Farhi":
                 block = Farhi(bits, readout, gen_params=self._get_new_param)
+            elif self.transformation == "Pyramid":
+                block = Pyramid_Transform(position_bits=bits[:-self.image_color_base], color_bits=bits[-self.image_color_base: ],
+                                          num_col_bits=self.num_qubits_col, num_row_bits=self.num_qubits_row, gen_params=self._get_new_param)
+
 
             full_circuit.append(block)
 

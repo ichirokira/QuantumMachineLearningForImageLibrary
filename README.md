@@ -9,6 +9,13 @@ The simple usage allows you try your own modification
 ```commandline
 python train.py --config configs/your_configs.py
 ```
+## Installation
+
+```commandline
+pip install tensorflow==2.4.1
+pip install tensorflow_quantum==0.5.1
+pip install seaborn
+```
 
 ## Configuration
 ```doctest
