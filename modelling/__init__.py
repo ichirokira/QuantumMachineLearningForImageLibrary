@@ -6,6 +6,8 @@ from modelling.callback import Counter, add_gradient_noise
 from modelling.quanvolution import QuanvolutionFRQI
 from modelling.quanvolution_nerq import *
 from modelling.multiview_frqi import *
-__all__ = ['FRQI_Basis', "Multiview_FRQI", 'NEQR_Basis', "QuanvolutionFRQI", "QuanvolutionNEQR", 'preprocessFRQI', 'preprocessNEQR', "Counter", "add_gradient_noise"]
+from modelling.foldup_frqi import *
+from modelling.foldup_neqr import *
+__all__ = ['FRQI_Basis', "Multiview_FRQI", "FoldUp_FRQI", "FoldUp_NEQR", 'NEQR_Basis', "QuanvolutionFRQI", "QuanvolutionNEQR", 'preprocessFRQI', 'preprocessNEQR', "Counter", "add_gradient_noise"]
 
 

@@ -39,26 +39,26 @@ class MCQI_Gate(cirq.Gate):
     def _circuit_diagram_info_(self, args):
         return "MCQI_R", "MCQI_G", "MCQI_B"
 
-class Multiview_FRQI(tf.keras.layers.Layer):
+class FoldUp_FRQI(tf.keras.layers.Layer):
     def __init__(self, config, image_shape=(28,28,1), name=None, **kwangs):
-        super(Multiview_FRQI, self).__init__(name, **kwangs)
+        super(FoldUp_FRQI, self).__init__(name, **kwangs)
         self.learning_params = []
         self.config=config
         self.num_blocks = config.NUM_BLOCKS
         self.type_entangles = config.TYPE_ENTANGLES
         self.entangling_arrangement = config.ENTANGLING_ARR
         self.image_shape = image_shape
-        self.num_images_qubits = (math.ceil(math.log2(config.NUM_IMAGES)))
+        self.num_patches_qubits = (math.ceil(math.log2(config.NUM_FOLD**2)))
         self.num_qubits_row = (math.ceil(math.log2(self.image_shape[0])))
         self.num_qubits_col = (math.ceil(math.log2(self.image_shape[1])))
         if self.image_shape[2] == 1:
             self.image_color_base = 1
         elif self.image_shape[2] == 3:
             self.image_color_base = 3
-        self.num_qubits = self.num_images_qubits+self.num_qubits_row + self.num_qubits_col + self.image_color_base  # position qubits and color intensity qubit
+        self.num_qubits = self.num_patches_qubits+self.num_qubits_row + self.num_qubits_col + self.image_color_base
         self.transformation = config.TRANSFORMATION
 
-        input_dim = (config.NUM_IMAGES, self.image_shape[0], self.image_shape[1], self.image_shape[2])
+        input_dim = (config.NUM_FOLD**2, self.image_shape[0], self.image_shape[1], self.image_shape[2])
         self.QNNL_layer_gen(input_dim)
 
     def _print_circuit(self):
@@ -69,25 +69,28 @@ class Multiview_FRQI(tf.keras.layers.Layer):
         self.learning_params.append(new_param)
         return new_param
 
-    def Multiview_FRQI(self, bits, params):
+    def FoldUp_FRQI(self, bits, params):
         pre_index_binary = ""
-        for m in range(self.num_images_qubits):
+        for m in range(self.num_patches_qubits):
             pre_index_binary += "0"
 
         circuit = cirq.Circuit()
-        for i in range(self.num_images_qubits):
+        for i in range(self.num_patches_qubits):
             circuit.append(cirq.H(bits[i]))
 
         for i in range(self.num_qubits_row + self.num_qubits_col):
-            circuit.append(cirq.H(bits[self.num_images_qubits+i]))
-        for n in range(self.config.NUM_IMAGES):
+            circuit.append(cirq.H(bits[self.num_patches_qubits+i]))
+
+
+
+        for n in range(self.config.NUM_FOLD**2):
 
             pre_position_binary = ""
             for k in range(self.num_qubits_row + self.num_qubits_col):
                 pre_position_binary += "0"
 
-            cur_index_binary = format(n, "b").zfill(self.num_images_qubits)
-            for index_bit in range(self.num_images_qubits):
+            cur_index_binary = format(n, "b").zfill(self.num_patches_qubits)
+            for index_bit in range(self.num_patches_qubits):
                 if cur_index_binary[index_bit] != pre_index_binary[index_bit]:
                     circuit.append(cirq.X(bits[index_bit]))
             for i in range((self.image_shape[0])):
@@ -96,7 +99,7 @@ class Multiview_FRQI(tf.keras.layers.Layer):
                         self.num_qubits_col)
                     for b in range(self.num_qubits_row + self.num_qubits_col):
                         if cur_position_binary[b] != pre_position_binary[b]:
-                            circuit.append(cirq.X(bits[self.num_images_qubits+b]))
+                            circuit.append(cirq.X(bits[self.num_patches_qubits+b]))
                     if self.image_color_base == 1:
                         circuit.append(cirq.ry(2 * params[self.image_color_base*(self.image_shape[1]*(self.image_shape[0]*n+i)+j)]).on(
                             bits[-((self.image_color_base))]).controlled_by(*bits[:-(self.image_color_base)]))
@@ -113,7 +116,7 @@ class Multiview_FRQI(tf.keras.layers.Layer):
                 cur_position_binary += "0"
             for b in range(self.num_qubits_row + self.num_qubits_col):
                 if cur_position_binary[b] != pre_position_binary[b]:
-                    circuit.append(cirq.X(bits[self.num_images_qubits+b]))
+                    circuit.append(cirq.X(bits[b]))
         return circuit
     def QNNL_layer_gen(self, input_dim):
         bits = cirq.GridQubit.rect(1, self.num_qubits)
@@ -129,7 +132,7 @@ class Multiview_FRQI(tf.keras.layers.Layer):
                         input_params.append(sympy.symbols("a{}-{}-{}-{}".format(n, i, j, c)))
 
         full_circuit = cirq.Circuit()
-        encoder = self.Multiview_FRQI(bits, input_params)
+        encoder = self.FoldUp_FRQI(bits, input_params)
         full_circuit.append(encoder)
 
         for i in range(self.num_blocks):
