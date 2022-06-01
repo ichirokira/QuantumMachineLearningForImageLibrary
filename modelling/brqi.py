@@ -15,20 +15,19 @@ from modelling.transformation import *
 from cirq.contrib.svg import SVGCircuit
 
 
-class FoldUp_NEQR(tf.keras.layers.Layer):
+class BRQI_Basis(tf.keras.layers.Layer):
     def __init__(self, config, image_shape=(28,28,1), color_qubits=8, name=None, **kwangs):
-        super(FoldUp_NEQR, self).__init__(name, **kwangs)
+        super(BRQI_Basis, self).__init__(name, **kwangs)
         self.learning_params = []
         self.config = config
         self.num_blocks = config.NUM_BLOCKS
         self.type_entangles = config.TYPE_ENTANGLES
         self.entangling_arrangement = config.ENTANGLING_ARR
         self.image_shape = image_shape
-        self.num_patches_qubits = (math.ceil(math.log2(config.NUM_FOLD**2)))
         self.num_qubits_row = (math.ceil(math.log2(self.image_shape[0])))
         self.num_qubits_col = (math.ceil(math.log2(self.image_shape[1])))
-        self.num_qubits_color = color_qubits
-        self.num_qubits = self.num_patches_qubits+self.num_qubits_row + self.num_qubits_col + self.num_qubits_color  # position qubits and color intensity qubit
+        self.num_qubits_color = (math.ceil(math.log2(color_qubits)))
+        self.num_qubits = self.num_qubits_row + self.num_qubits_col + self.num_qubits_color + 1
         self.transformation = config.TRANSFORMATION
         self.bits = cirq.GridQubit.rect(1, self.num_qubits)
         if self.transformation == "Farhi":
@@ -45,7 +44,7 @@ class FoldUp_NEQR(tf.keras.layers.Layer):
         self.learning_params.append(new_param)
         return new_param
 
-    def FoldUp_NEQR(self, bits, params):
+    def BRQI(self, bits, params):
         # with tf.compat.v1.Session() as sess:
         #     sess.run(tf.compat.v1.global_variables_initializer())
         #     params = params.eval()
@@ -53,54 +52,46 @@ class FoldUp_NEQR(tf.keras.layers.Layer):
         a = tf.constant(params)
         proto_tensor = tf.make_tensor_proto(a)
         params_numpy = tf.make_ndarray(proto_tensor)
-
-        pre_index_binary = ""
-        for m in range(self.num_patches_qubits):
-            pre_index_binary += "0"
+        pre_position_binary = ""
+        for i in range(self.num_qubits - self.num_qubits_color):
+            pre_position_binary += "0"
 
 
 
         circuit = cirq.Circuit()
-        for i in range(self.num_patches_qubits):
-            circuit.append(cirq.H(bits[i]))
         for i in range(self.num_qubits_row + self.num_qubits_col):
-            circuit.append(cirq.H(bits[self.num_patches_qubits+i]))
+            circuit.append(cirq.H(bits[i]))
+        for i in range(self.num_qubits_color):
+            circuit.append(cirq.H(bits[self.num_qubits_row + self.num_qubits_col+i]))
 
-        for n in range(self.config.NUM_FOLD**2):
-
-            cur_index_binary = format(n, "b").zfill(self.num_patches_qubits)
-            for index_bit in range(self.num_patches_qubits):
-                if cur_index_binary[index_bit] != pre_index_binary[index_bit]:
-                    circuit.append(
-                        cirq.X(bits[index_bit]))
-
-            pre_position_binary = ""
-            for i in range(self.num_qubits_row + self.num_qubits_col):
-                pre_position_binary += "0"
-
-            for i in range((self.image_shape[0])):
-                for j in range((self.image_shape[1])):
-                    cur_position_binary = format(i, "b").zfill(self.num_qubits_row) + format(j, "b").zfill(
-                        self.num_qubits_col)
-                    for b in range(self.num_qubits_row + self.num_qubits_col):
-                        if cur_position_binary[b] != pre_position_binary[b]:
-                            circuit.append(cirq.X(bits[self.num_patches_qubits+b]))
-                    # color_bin_string = format(params[i*self.image_shape[1]+j], "b").zfill(self.num_qubits_color)
-                    color_bin_string = format(params_numpy[(self.image_shape[1]*(self.image_shape[0]*n+i)+j)], "b").zfill(self.num_qubits_color)
-                    #print(color_bin_string)
-                    for indx, cb in enumerate(color_bin_string[::-1]):
-                        #print(indx)
-                        if cb == '1':
-                            circuit.append(cirq.X(bits[self.num_patches_qubits+self.num_qubits_row + self.num_qubits_col + indx]).controlled_by(
-                                *bits[:(self.num_qubits - self.num_qubits_color)]))
-                    pre_position_binary = cur_position_binary
-            pre_index_binary = cur_index_binary
-            cur_position_binary = ""
-            for k in range(self.num_qubits_row + self.num_qubits_col):
-                cur_position_binary += "0"
-            for b in range(self.num_qubits_row + self.num_qubits_col):
-                if cur_position_binary[b] != pre_position_binary[b]:
-                    circuit.append(cirq.X(bits[self.num_patches_qubits+b]))
+        for i in range((self.image_shape[0])):
+            for j in range((self.image_shape[1])):
+                cur_position_binary = format(i, "b").zfill(self.num_qubits_row) + format(j, "b").zfill(
+                    self.num_qubits_col)
+                for b in range(self.num_qubits_row + self.num_qubits_col):
+                    if cur_position_binary[b] != pre_position_binary[b]:
+                        circuit.append(cirq.X(bits[b]))
+                # color_bin_string = format(params[i*self.image_shape[1]+j], "b").zfill(self.num_qubits_color)
+                color_bin_string = format(params_numpy[i * self.image_shape[1] + j], "b").zfill(self.num_qubits_color)
+                #print(color_bin_string)
+                start_color_index = ""
+                for i in range(self.num_qubits_color):
+                    start_color_index += "0"
+                pre_color_index = start_color_index
+                for indx, cb in enumerate(color_bin_string[::-1]):
+                    #print(indx)
+                    cur_color_index = format(indx, "b").zfill(self.num_qubits_color)
+                    for bit_color_indx in range(self.num_qubits_color):
+                        if cur_color_index[bit_color_indx] != pre_color_index[bit_color_indx]:
+                            circuit.append(cirq.X(bits[self.num_qubits_row + self.num_qubits_col+bit_color_indx]))
+                    if cb == '1':
+                        circuit.append(cirq.X(bits[-1]).controlled_by(
+                            *bits[:(-1)]))
+                    pre_color_index = cur_color_index
+                for bit_color_indx in range(self.num_qubits_color):
+                    if pre_color_index[bit_color_indx] != start_color_index[bit_color_indx]:
+                        circuit.append(cirq.X(bits[self.num_qubits_row + self.num_qubits_col + bit_color_indx]))
+                pre_position_binary = cur_position_binary
         return circuit
 
 
@@ -134,13 +125,13 @@ class FoldUp_NEQR(tf.keras.layers.Layer):
 
     def call(self, inputs):
 
-        # inputs shapes: N, L, H, W, C
+        # inputs shapes: N, H, W, C
         inputs = tf.reshape(inputs, shape=[tf.shape(inputs)[0], -1])
         encoder_circuits = []
 
         for input in inputs:
             #print(input.shape)
-            encoder_circuits.append(tfq.convert_to_tensor([self.FoldUp_NEQR(self.bits, input)]))
+            encoder_circuits.append(tfq.convert_to_tensor([self.BRQI(self.bits, input)]))
         encoder_circuits_tensor = tf.stack(encoder_circuits)
         # circuit = cirq.Circuit()
         # for i in range(self.num_blocks):

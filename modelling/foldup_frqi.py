@@ -111,12 +111,15 @@ class FoldUp_FRQI(tf.keras.layers.Layer):
                             MCQI_Gate(bits, theta_r, theta_g, theta_b).on(*bits[-(self.image_color_base):]).controlled_by(
                                 *bits[:-(self.image_color_base)]))
                     pre_position_binary = cur_position_binary
+            pre_index_binary = cur_index_binary
+
+
             cur_position_binary = ""
             for k in range(self.num_qubits_row + self.num_qubits_col):
                 cur_position_binary += "0"
             for b in range(self.num_qubits_row + self.num_qubits_col):
                 if cur_position_binary[b] != pre_position_binary[b]:
-                    circuit.append(cirq.X(bits[b]))
+                    circuit.append(cirq.X(bits[self.num_patches_qubits+b]))
         return circuit
     def QNNL_layer_gen(self, input_dim):
         bits = cirq.GridQubit.rect(1, self.num_qubits)
@@ -137,7 +140,7 @@ class FoldUp_FRQI(tf.keras.layers.Layer):
 
         for i in range(self.num_blocks):
             if self.transformation == "HE":
-                block = HE(bits, entangling_arrangement=self.entangling_arrangement, type_entangles=self.type_entangles,
+                block = HE(bits[:self.num_patches_qubits]+[bits[-self.image_color_base]], entangling_arrangement=self.entangling_arrangement, type_entangles=self.type_entangles,
                            gen_params=self._get_new_param)
 
 
@@ -161,8 +164,11 @@ class FoldUp_FRQI(tf.keras.layers.Layer):
 
             else:
                 self.ops = []
-                for i in range(len(bits)):
-                    self.ops.append(cirq.X(bits[i]))
+                consider_bits = bits[:self.num_patches_qubits]+[bits[-self.image_color_base]]
+
+                for i in range(len(consider_bits)):
+
+                    self.ops.append(cirq.X(consider_bits[i]))
                 # self.ops = []
                 # for i in range(20):
                 #     self.ops.append(cirq.X(bits[-1]))

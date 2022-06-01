@@ -34,14 +34,24 @@ def filter_class(x, y, config, train=True):
         X_data = x[keepx]
 
         if train:
-            X_data = X_data[:(len(X_data) - (len(X_data) % config.NUM_IMAGES))]
-            X_data = np.reshape(X_data,(-1,config.NUM_IMAGES, H,W,C))
+            X_data = X_data[:config.LENGTH_DATA]
+            X_data_reshaped = np.reshape(X_data, (-1, config.NUM_IMAGES, H, W, C))
+            X_data_agu = [X_data_reshaped]
+            for i in range(config.ARGUMENTED_TIMES):
+                data = tf.identity(X_data)
+                data = np.random.permutation(data)
+                data = np.reshape(data, (-1,config.NUM_IMAGES, H, W, C))
+                X_data_agu.append(data)
+            X_data = np.concatenate(X_data_agu, axis=0)
+
+
         else:
             X_data = np.repeat(X_data, config.NUM_IMAGES, axis=0)
             X_data = np.reshape(X_data, (-1, config.NUM_IMAGES, H, W, C))
 
         y_data = y[keep]
-        y_data = y_data[:X_data.shape[0]]
+        y_data = [y_data[:config.LENGTH_DATA] for i in range(config.ARGUMENTED_TIMES)]
+        y_data = np.concatenate(y_data, axis=0)
 
         x_split.append(X_data)
         y_split.append(y_data)
@@ -70,19 +80,25 @@ def filter_nerq(x, y, config, num_samples=1000, train=True):
     x1, y1 = x[keepx], y[keep1]
 
     num_samples = num_samples - (num_samples%config.NUM_IMAGES)
+    if train:
+        x0 = tf.reshape(x0[:num_samples], (-1, config.NUM_IMAGES, H,W,C))
+        x1 = tf.reshape(x1[:num_samples], (-1, config.NUM_IMAGES, H, W, C))
+    else:
+        x0 = np.repeat(x0[:num_samples], config.NUM_IMAGES, axis=0)
+        x0 = np.reshape(x0, (-1, config.NUM_IMAGES, H, W, C))
 
-    x0 = tf.reshape(x0[:num_samples], (-1, config.NUM_IMAGES, H,W,C))
-    x1 = tf.reshape(x1[:num_samples], (-1, config.NUM_IMAGES, H, W, C))
-
+        x1 = np.repeat(x1[:num_samples], config.NUM_IMAGES, axis=0)
+        x1 = np.reshape(x1, (-1, config.NUM_IMAGES, H, W, C))
     y0 = y0[:x0.shape[0]]
-    y1 = y0[:x1.shape[0]]
+    y1 = y1[:x1.shape[0]]
 
     x = np.concatenate([x0[:num_samples], x1[:num_samples]], 0)
     y = np.concatenate([y0[:num_samples], y1[:num_samples]], 0)
     idx = np.random.permutation(len(x))
     x, y = x[idx], y[idx]
-    for i in range(len(classes)):
-        y[y==classes[i]] = i
+    for i in range(len(config.CLASSES)):
+        y[y==config.CLASSES
+        [i]] = i
     return x, y
 
 def train(config):
@@ -94,6 +110,12 @@ def train(config):
         x_test = tf.image.rgb_to_grayscale(x_test)
     elif config.DATASET == 'MNIST':
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+        x_train = x_train[..., np.newaxis]
+        x_test = x_test[..., np.newaxis]
+    elif config.DATASET == "FashionMNIST":
+        fashion_mnist = tf.keras.datasets.fashion_mnist
+
+        (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
         x_train = x_train[..., np.newaxis]
         x_test = x_test[..., np.newaxis]
 
@@ -136,7 +158,8 @@ def train(config):
         if num_qubits > config.MAX_NUM_QUBITS:
             print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
             removed_qubits = (num_qubits - config.MAX_NUM_QUBITS) // 3
-
+            if removed_qubits == 0:
+                removed_qubits = 1
             if num_qubits_row+num_qubits_col - 2*removed_qubits < config.MIN_POS_QUBITS:
                 """if number of position qubits is smaller than threshold, rescale color"""
 
@@ -180,8 +203,8 @@ def train(config):
     # x_train = x_train.numpy()
     # x_test = x_test.numpy()
     if config.ENCODER == "NERQ":
-        x_train_filtered, y_train_filtered = filter_nerq(x_train, y_train, config, 1000)
-        x_test_filtered, y_test_filtered = filter_nerq(x_test, y_test, config.CLASSES, 500)
+        x_train_filtered, y_train_filtered = filter_nerq(x_train, y_train, config, 1000, train=True)
+        x_test_filtered, y_test_filtered = filter_nerq(x_test, y_test, config, 500, train=False)
     else:
         x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config, train=True)
         x_test_filtered, y_test_filtered = filter_class(x_test, y_test, config, train=False)
@@ -270,7 +293,7 @@ def train(config):
     if not os.path.exists(log_grads_dir):
         os.makedirs(log_grads_dir)
     callbacks = [ExtendedTensorBoard(log_dir=os.path.join(config.LOG_DIR, "logs"), histogram_freq=1, write_images=True,
-                                         update_freq='epoch')]
+                                         update_freq='batch')]
 
     qnn_history = qdnn_model.fit(
         x_train_filtered, y_train_filtered,

@@ -58,15 +58,29 @@ def train(config):
 
         x_train = tf.image.rgb_to_grayscale(x_train)
         x_test = tf.image.rgb_to_grayscale(x_test)
+
     elif config.DATASET == 'MNIST':
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
         x_train = x_train[..., np.newaxis]
         x_test = x_test[..., np.newaxis]
+    elif config.DATASET == "FashionMNIST":
+        fashion_mnist = tf.keras.datasets.fashion_mnist
+
+        (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+        x_train = x_train[..., np.newaxis]
+        x_test = x_test[..., np.newaxis]
+
 
     N, H, W, C = x_train.shape
     x_train = tf.cast(x_train, tf.float32)
     x_test = tf.cast(x_test, tf.float32)
-
+    num_qubits_row = (math.ceil(math.log2(H)))
+    num_qubits_col = (math.ceil(math.log2(W)))
+    x_train = tf.image.resize(x_train[:],
+                              (2 ** (num_qubits_row), 2 ** (num_qubits_col)))
+    x_test = tf.image.resize(x_test[:],
+                             (2 ** (num_qubits_row), 2 ** (num_qubits_col)))
+    N, H, W, C = x_train.shape
     print("Number of original training examples", len(x_train))
     print("Number of original test examples", len(x_test))
 
@@ -92,6 +106,7 @@ def train(config):
 
         x_train = tf.image.extract_patches(x_train, sizes=[1, config.NUM_FOLD, config.NUM_FOLD, 1], strides=[1, config.NUM_FOLD, config.NUM_FOLD, 1], rates=[1, 1, 1, 1], padding='SAME')
         x_train = tf.transpose(x_train, perm=[0,3,1,2])
+
         x_test = tf.image.extract_patches(x_test, sizes=[1, config.NUM_FOLD, config.NUM_FOLD, 1], strides=[1, config.NUM_FOLD, config.NUM_FOLD, 1], rates=[1, 1, 1, 1],
                                            padding='SAME')
         x_test = tf.transpose(x_test, perm=[0, 3, 1, 2])
@@ -116,7 +131,8 @@ def train(config):
         if num_qubits > config.MAX_NUM_QUBITS:
             print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
             removed_qubits = (num_qubits - config.MAX_NUM_QUBITS) // 3
-
+            if removed_qubits == 0:
+                removed_qubits = 1
             if num_qubits_row+num_qubits_col - 2*removed_qubits < config.MIN_POS_QUBITS:
                 """if number of position qubits is smaller than threshold, rescale color"""
 
@@ -178,8 +194,8 @@ def train(config):
     # x_train = x_train.numpy()
     # x_test = x_test.numpy()
     if config.ENCODER == "NERQ":
-        x_train_filtered, y_train_filtered = filter_nerq(x_train, y_train, config.CLASSES, 1000)
-        x_test_filtered, y_test_filtered = filter_nerq(x_test, y_test, config.CLASSES, 500)
+        x_train_filtered, y_train_filtered = filter_nerq(x_train, y_train, config.CLASSES, 2000)
+        x_test_filtered, y_test_filtered = filter_nerq(x_test, y_test, config.CLASSES, 1000)
     else:
         x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config.CLASSES)
         x_test_filtered, y_test_filtered = filter_class(x_test, y_test, config.CLASSES)
