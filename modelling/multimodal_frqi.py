@@ -14,51 +14,27 @@ from modelling.transformation import *
 from cirq.contrib.svg import SVGCircuit
 
 
-class MCQI_Gate(cirq.Gate):
-    """
-    This multichannel design are currently not supported by tfq
-    We cannot serialize MCQI Gate to use in tf.keras.layers
-    """
-    def __init__(self, bits, theta_r, theta_g, theta_b):
-        super(MCQI_Gate, self)
-        self.bits = bits
-        self.theta_r = theta_r
-        self.theta_g = theta_g
-        self.theta_b = theta_b
 
-    def _num_qubits_(self):
-        return 3
-
-    def _unitary_(self):
-        uni_r = cirq.ry(2 * self.theta_r).on(self.bits[-3]).controlled_by(*self.bits[-3:])._unitary_()
-        uni_g = cirq.ry(2 * self.theta_g).on(self.bits[-2]).controlled_by(*self.bits[-3:])._unitary_()
-        uni_b = cirq.ry(2 * self.theta_b).on(self.bits[-1]).controlled_by(*self.bits[-3:])._unitary_()
-
-        return np.matmul(uni_b, np.matmul(uni_g, uni_r))
-
-    def _circuit_diagram_info_(self, args):
-        return "MCQI_R", "MCQI_G", "MCQI_B"
-
-class Multiview_FRQI(tf.keras.layers.Layer):
-    def __init__(self, config, image_shape=(28,28,1), name=None, **kwangs):
-        super(Multiview_FRQI, self).__init__(name, **kwangs)
+class Multimodal_FRQI(tf.keras.layers.Layer):
+    def __init__(self, config, name=None, **kwangs):
+        super(Multimodal_FRQI, self).__init__(name, **kwangs)
         self.learning_params = []
         self.config=config
         self.num_blocks = config.NUM_BLOCKS
         self.type_entangles = config.TYPE_ENTANGLES
         self.entangling_arrangement = config.ENTANGLING_ARR
-        self.image_shape = image_shape
-        self.num_images_qubits = (math.ceil(math.log2(config.NUM_IMAGES)))
-        self.num_qubits_row = (math.ceil(math.log2(self.image_shape[0])))
-        self.num_qubits_col = (math.ceil(math.log2(self.image_shape[1])))
-        if self.image_shape[2] == 1:
-            self.image_color_base = 1
-        elif self.image_shape[2] == 3:
-            self.image_color_base = 3
-        self.num_qubits = self.num_images_qubits+self.num_qubits_row + self.num_qubits_col + self.image_color_base  # position qubits and color intensity qubit
+        self.num_views_qubits = (math.ceil(math.log2(len(config.VIEWS))))
+        self.num_feature_qubits = (math.ceil(math.log2(config.MAX_LENGTH)))
+        # self.num_qubits_row = (math.ceil(math.log2(self.image_shape[0])))
+        # self.num_qubits_col = (math.ceil(math.log2(self.image_shape[1])))
+        # if self.image_shape[2] == 1:
+        #     self.image_color_base = 1
+        # elif self.image_shape[2] == 3:
+        #     self.image_color_base = 3
+        self.num_qubits = self.num_views_qubits + self.num_feature_qubits + 1
         self.transformation = config.TRANSFORMATION
 
-        input_dim = (config.NUM_IMAGES, self.image_shape[0], self.image_shape[1], self.image_shape[2])
+        input_dim = (len(config.VIEWS), config.MAX_LENGTH)
         self.QNNL_layer_gen(input_dim)
 
     def _print_circuit(self):
@@ -71,50 +47,43 @@ class Multiview_FRQI(tf.keras.layers.Layer):
 
     def Multiview_FRQI(self, bits, params):
         pre_index_binary = ""
-        for m in range(self.num_images_qubits):
+        for m in range(self.num_views_qubits):
             pre_index_binary += "0"
 
         circuit = cirq.Circuit()
-        for i in range(self.num_images_qubits):
+        for i in range(self.num_views_qubits):
             circuit.append(cirq.H(bits[i]))
 
-        for i in range(self.num_qubits_row + self.num_qubits_col):
-            circuit.append(cirq.H(bits[self.num_images_qubits+i]))
-        for n in range(self.config.NUM_IMAGES):
+        for i in range(self.num_feature_qubits):
+            circuit.append(cirq.H(bits[self.num_views_qubits+i]))
+        for n in range(len(self.config.VIEWS)):
 
             pre_position_binary = ""
-            for k in range(self.num_qubits_row + self.num_qubits_col):
+            for k in range(self.num_feature_qubits):
                 pre_position_binary += "0"
 
-            cur_index_binary = format(n, "b").zfill(self.num_images_qubits)
-            for index_bit in range(self.num_images_qubits):
+            cur_index_binary = format(n, "b").zfill(self.num_views_qubits)
+            for index_bit in range(self.num_views_qubits):
                 if cur_index_binary[index_bit] != pre_index_binary[index_bit]:
                     circuit.append(cirq.X(bits[index_bit]))
-            for i in range((self.image_shape[0])):
-                for j in range((self.image_shape[1])):
-                    cur_position_binary = format(i, "b").zfill(self.num_qubits_row) + format(j, "b").zfill(
-                        self.num_qubits_col)
-                    for b in range(self.num_qubits_row + self.num_qubits_col):
-                        if cur_position_binary[b] != pre_position_binary[b]:
-                            circuit.append(cirq.X(bits[self.num_images_qubits+b]))
-                    if self.image_color_base == 1:
-                        circuit.append(cirq.ry(2 * params[self.image_color_base*(self.image_shape[1]*(self.image_shape[0]*n+i)+j)]).on(
-                            bits[-((self.image_color_base))]).controlled_by(*bits[:-(self.image_color_base)]))
-                    elif self.image_color_base == 3:
-                        theta_r = params[self.image_color_base*(self.image_shape[1]*(self.image_shape[0]*n+i)+j)]
-                        theta_g = params[self.image_color_base*(self.image_shape[1]*(self.image_shape[0]*n+i)+j) + 1]
-                        theta_b = params[self.image_color_base*(self.image_shape[1]*(self.image_shape[0]*n+i)+j) + 2]
-                        circuit.append(
-                            MCQI_Gate(bits, theta_r, theta_g, theta_b).on(*bits[-(self.image_color_base):]).controlled_by(
-                                *bits[:-(self.image_color_base)]))
-                    pre_position_binary = cur_position_binary
+            for i in range((self.config.MAX_LENGTH)):
+                # for j in range((self.image_shape[1])):
+                cur_position_binary = format(i, "b").zfill(self.num_feature_qubits)
+                for b in range(self.num_feature_qubits):
+                    if cur_position_binary[b] != pre_position_binary[b]:
+                        circuit.append(cirq.X(bits[self.num_views_qubits+b]))
+
+                circuit.append(cirq.ry(2 * params[n*self.config.MAX_LENGTH+i]).on(
+                    bits[-1]).controlled_by(*bits[:-1]))
+
+                pre_position_binary = cur_position_binary
             pre_index_binary = cur_index_binary
             cur_position_binary = ""
-            for k in range(self.num_qubits_row + self.num_qubits_col):
+            for k in range(self.num_feature_qubits):
                 cur_position_binary += "0"
-            for b in range(self.num_qubits_row + self.num_qubits_col):
+            for b in range(self.num_feature_qubits):
                 if cur_position_binary[b] != pre_position_binary[b]:
-                    circuit.append(cirq.X(bits[self.num_images_qubits+b]))
+                    circuit.append(cirq.X(bits[self.num_views_qubits+b]))
         return circuit
     def QNNL_layer_gen(self, input_dim):
         bits = cirq.GridQubit.rect(1, self.num_qubits)
@@ -125,9 +94,7 @@ class Multiview_FRQI(tf.keras.layers.Layer):
         input_params = []
         for n in range(input_dim[0]):
             for i in range(input_dim[1]):
-                for j in range(input_dim[2]):
-                    for c in range(input_dim[3]):
-                        input_params.append(sympy.symbols("a{}-{}-{}-{}".format(n, i, j, c)))
+                input_params.append(sympy.symbols("a{}-{}".format(n, i)))
 
         full_circuit = cirq.Circuit()
         encoder = self.Multiview_FRQI(bits, input_params)
@@ -171,7 +138,7 @@ class Multiview_FRQI(tf.keras.layers.Layer):
         self.circuit_tensor = tfq.convert_to_tensor([self.circuit])
 
     def call(self, inputs):
-        # inputs shapes: N, H, W, C
+        # inputs shapes: N, V, C
         inputs = tf.reshape(inputs, shape=[tf.shape(inputs)[0], -1])
         circuit_inputs = tf.tile([self.circuit_tensor], [tf.shape(inputs)[0], 1])
 

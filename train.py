@@ -23,18 +23,61 @@ def get_args():
 
     return args
 
-def filter_class(x, y, classes):
+# def filter_class(x, y, classes):
+#
+#     keep = (y == classes[0])
+#     for i in range(1, len(classes)):
+#         keep = np.logical_or(keep, (y==classes[i]))
+#
+#     keepx = keep.reshape(keep.shape[0])
+#     x, y = x[keepx], y[keep]
+#     for i in range(len(classes)):
+#         y[y==classes[i]] = i
+#     return x, y
 
-    keep = (y == classes[0])
-    for i in range(1, len(classes)):
-        keep = np.logical_or(keep, (y==classes[i]))
+def filter_class(x, y, classes, train=True):
+    N, H,W,C = x.shape
+    x_split = []
+    y_split = []
+    keep = (y == config.CLASSES[0])
+    for i in range(0, len(config.CLASSES)):
+        keep = (y == config.CLASSES[i])
+        keepx = keep.reshape(keep.shape[0])
+        X_data = x[keepx]
 
-    keepx = keep.reshape(keep.shape[0])
-    x, y = x[keepx], y[keep]
-    for i in range(len(classes)):
-        y[y==classes[i]] = i
+        if train:
+            X_data = X_data[:3000]
+            # X_data_reshaped = np.reshape(X_data, (-1, config.NUM_IMAGES, H, W, C))
+            # X_data_agu = [X_data_reshaped]
+            # for i in range(ARGUMENTED_TIMES):
+            #     data = tf.identity(X_data)
+            #     data = np.random.permutation(data)
+            #     data = np.reshape(data, (-1, config.NUM_IMAGES, H, W, C))
+            #     X_data_agu.append(data)
+            # X_data = np.concatenate(X_data_agu, axis=0)
+
+
+        # else:
+        #     X_data = np.repeat(X_data, config.NUM_IMAGES, axis=0)
+        #     # X_data = np.reshape(X_data, (-1, config.NUM_IMAGES, H, W, C))
+
+        y_data = y[keep]
+        y_data = y_data[:3000] #[y_data[:LENGTH_DATA] for i in range(ARGUMENTED_TIMES)]
+        #y_data = np.concatenate(y_data, axis=0)
+
+        x_split.append(X_data)
+        y_split.append(y_data)
+
+    x = np.concatenate(x_split, axis=0)
+    y = np.concatenate(y_split, axis=0)
+
+    idx = np.random.permutation(len(x))
+
+    x = x[idx]
+    y = y[idx]
+    for i in range(len(config.CLASSES)):
+        y[y==config.CLASSES[i]] = i
     return x, y
-
 
 def filter_nerq(x, y, classes, num_samples=1000):
     keep0 = (y == classes[0])
@@ -64,11 +107,23 @@ def train(config):
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
         x_train = x_train[..., np.newaxis]
         x_test = x_test[..., np.newaxis]
+    elif config.DATASET == "FashionMNIST":
+        fashion_mnist = tf.keras.datasets.fashion_mnist
+
+        (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+        x_train = x_train[..., np.newaxis]
+        x_test = x_test[..., np.newaxis]
 
     N, H, W, C = x_train.shape
     x_train = tf.cast(x_train, tf.float32)
     x_test = tf.cast(x_test, tf.float32)
-
+    # num_qubits_row = (math.ceil(math.log2(H)))
+    # num_qubits_col = (math.ceil(math.log2(W)))
+    # x_train = tf.image.resize(x_train[:],
+    #                           (2 ** (num_qubits_row), 2 ** (num_qubits_col)))
+    # x_test = tf.image.resize(x_test[:],
+    #                          (2 ** (num_qubits_row), 2 ** (num_qubits_col)))
+    # N, H, W, C = x_train.shape
     print("Number of original training examples", len(x_train))
     print("Number of original test examples", len(x_test))
 
@@ -103,8 +158,9 @@ def train(config):
         new_scale = 255.0
         if num_qubits > config.MAX_NUM_QUBITS:
             print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
-            removed_qubits = (num_qubits - config.MAX_NUM_QUBITS) // 3
-
+            removed_qubits = math.ceil((num_qubits - config.MAX_NUM_QUBITS) / 3)
+            if removed_qubits == 0:
+                removed_qubits = 1
             if num_qubits_row+num_qubits_col - 2*removed_qubits < config.MIN_POS_QUBITS:
                 """if number of position qubits is smaller than threshold, rescale color"""
 
@@ -140,7 +196,61 @@ def train(config):
                 N, H, W, C = x_train.shape
         x_train = preprocessNEQR(x_train, new_scale=new_scale)
         x_test = preprocessNEQR(x_test, new_scale=new_scale)
+        # if config.ENCODER == 'NERQ':
         qnn_layer = NEQR_Basis(config, image_shape=(H, W, C), color_qubits=color_qubits)
+        # elif config.ENCODER == 'BRQI':
+        #     qnn_layer = BRQI_Basis(config, image_shape=(H, W, C), color_qubits=color_qubits)
+    elif config.ENCODER == 'BRQI':
+        num_qubits_row = (math.ceil(math.log2(H)))
+        num_qubits_col = (math.ceil(math.log2(W)))
+        color_range_bit = 8
+        color_qubits = (math.ceil(math.log2(color_range_bit)))+1
+        num_qubits = num_qubits_col + num_qubits_row + color_qubits
+        new_scale = 255.0
+        if num_qubits > config.MAX_NUM_QUBITS:
+            print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
+            removed_qubits = math.ceil((num_qubits - config.MAX_NUM_QUBITS) / 3)
+            if removed_qubits == 0:
+                removed_qubits = 1
+            if num_qubits_row+num_qubits_col - 2*removed_qubits < config.MIN_POS_QUBITS:
+                """if number of position qubits is smaller than threshold, rescale color"""
+
+                if (color_qubits - 3*removed_qubits) > config.MIN_COLOR_QUBITS:
+                    color_qubits -= 3*removed_qubits
+                    new_scale = 2 ** color_qubits - 1
+                    print("[INFO] Rescale Color Range to {}".format(new_scale + 1))
+                else:
+                    color_qubits = config.MIN_COLOR_QUBITS
+                    pos_qubits = (config.MAX_NUM_QUBITS - color_qubits) // 2
+                    x_train = tf.image.resize(x_train[:], (2 ** (pos_qubits), 2 ** (pos_qubits)))
+                    x_test = tf.image.resize(x_test[:], (2 ** (pos_qubits), 2 ** (pos_qubits)))
+                    new_color_range_bit = 2 ** (color_qubits-1)
+                    new_scale = 2 ** new_color_range_bit - 1
+                    print("[INTO] Resize image from {} to {}. Rescale Color Range to {}".format([H, W],
+                                                                                                [2 ** (pos_qubits),
+                                                                                                 2 ** (pos_qubits)],
+                                                                                                new_scale + 1))
+                N, H, W, C = x_train.shape
+                # new_scale = 2**color_qubits-1
+                # print("[INFO] Rescale Color Range to {}".format(new_scale+1))
+            else:
+                x_train = tf.image.resize(x_train[:], (2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)))
+                x_test = tf.image.resize(x_test[:], (2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)))
+
+                if (color_qubits - removed_qubits) > config.MIN_COLOR_QUBITS:
+                    color_qubits -= removed_qubits
+                else:
+                    color_qubits = config.MIN_COLOR_QUBITS
+                new_color_range_bit = 2 ** (color_qubits-1)
+                new_scale = 2**new_color_range_bit-1
+                print("[INFO] Resize image from {} to {}. Rescale Color Range to {}".format([H, W],
+                                                                                         [2 ** (num_qubits_row - removed_qubits), 2 ** (num_qubits_col - removed_qubits)],
+                                                                                         new_scale+1))
+                N, H, W, C = x_train.shape
+        x_train = preprocessNEQR(x_train, new_scale=new_scale)
+        x_test = preprocessNEQR(x_test, new_scale=new_scale)
+        
+        qnn_layer = BRQI_Basis(config, image_shape=(H, W, C), color_qubits=color_qubits)
 
     num_classes = len(config.CLASSES)
     if config.MEASUREMENT:
@@ -151,8 +261,8 @@ def train(config):
         x_train_filtered, y_train_filtered = filter_nerq(x_train, y_train, config.CLASSES, 1000)
         x_test_filtered, y_test_filtered = filter_nerq(x_test, y_test, config.CLASSES, 500)
     else:
-        x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config.CLASSES)
-        x_test_filtered, y_test_filtered = filter_class(x_test, y_test, config.CLASSES)
+        x_train_filtered, y_train_filtered = filter_class(x_train, y_train, config.CLASSES, train=True)
+        x_test_filtered, y_test_filtered = filter_class(x_test, y_test, config.CLASSES, train=False)
 
     print("[INFO] Training image shape: ", x_train_filtered.shape)
     print("[INFO] Test image shape: ", x_test_filtered.shape)

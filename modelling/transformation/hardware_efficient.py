@@ -28,3 +28,4 @@ def HE_Color_Independence(position_bits, color_bits, entangling_arrangement="cha
             circuit.append(
                 cirq.ry(gen_params()).on(c).controlled_by(*position_bits))
         return circuit
+

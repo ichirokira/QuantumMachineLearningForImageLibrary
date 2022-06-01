@@ -92,14 +92,14 @@ def train(config):
             x_test = tf.image.resize(x_test[:], (2**(num_qubits_row-rescaled_qubits), 2**(num_qubits_col-rescaled_qubits)))
             N, H, W, C = x_train.shape
 
-        new_H, new_W = H//config.IMG_SCALE, W//config.IMG_SCALE
+        new_H, new_W = config.NEW_SIZE[0], config.NEW_SIZE[1]
         x_train = tf.image.resize(x_train, (new_H, new_W))
-        padding = [[0,0] ,[H-H//config.IMG_SCALE, 0], [W-W//config.IMG_SCALE, 0], [0,0]]
+        padding = [[0,0] ,[H-config.NEW_SIZE[0], 0], [W-config.NEW_SIZE[1], 0], [0,0]]
         x_train = tf.pad(x_train, padding, mode='CONSTANT', constant_values=0)
         print("[INFO] PADDING SIZE {}, OLD SIZE {}".format(x_train.shape, [H, W]))
         if config.PAD_TEST:
             x_test = tf.image.resize(x_test, (new_H, new_W))
-            padding = [[0,0] ,[H-H//config.IMG_SCALE, 0], [W-W//config.IMG_SCALE, 0], [0,0]]
+            padding = [[0,0] ,[H-config.NEW_SIZE[0], 0], [W-config.NEW_SIZE[1], 0], [0,0]]
             x_test = tf.pad(x_test, padding, mode='CONSTANT', constant_values=0)
             print("[INFO] PADDING SIZE {}, OLD SIZE {}".format(x_test.shape, [H, W]))
 
@@ -117,7 +117,8 @@ def train(config):
         if num_qubits > config.MAX_NUM_QUBITS:
             print("[INFO] Require {} qubits excess {}".format(num_qubits, config.MAX_NUM_QUBITS))
             removed_qubits = (num_qubits - config.MAX_NUM_QUBITS) // 3
-
+            if removed_qubits == 0:
+                removed_qubits = 1
             if num_qubits_row+num_qubits_col - 2*removed_qubits < config.MIN_POS_QUBITS:
                 """if number of position qubits is smaller than threshold, rescale color"""
 

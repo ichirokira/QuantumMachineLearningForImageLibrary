@@ -12,7 +12,7 @@ MEASUREMENT = "full"
 
 #-----------------DATASET--------------------
 DATASET = 'CIFAR10'
-IMG_SCALE = 2
+NEW_SIZE = [16,16]
 PAD_TEST = True
 CLASSES = [0, 1]
 #-----------------TRAINING CONFIGURATION---------------------
