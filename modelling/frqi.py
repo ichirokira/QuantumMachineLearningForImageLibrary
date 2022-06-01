@@ -124,6 +124,8 @@ class FRQI_Basis(tf.keras.layers.Layer):
                 block = Pyramid_Transform(position_bits=bits[:-self.image_color_base], color_bits=bits[-self.image_color_base: ],
                                           num_col_bits=self.num_qubits_col, num_row_bits=self.num_qubits_row, gen_params=self._get_new_param)
 
+            elif "PQC" in self.transformation:
+                block = PQCs(bits, gen_params=self._get_new_param, pqc=int(self.transformation.split("_")[1])).circuit
 
             full_circuit.append(block)
 
