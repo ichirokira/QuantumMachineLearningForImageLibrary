@@ -142,7 +142,8 @@ class FoldUp_FRQI(tf.keras.layers.Layer):
             if self.transformation == "HE":
                 block = HE(bits[:self.num_patches_qubits]+[bits[-self.image_color_base]], entangling_arrangement=self.entangling_arrangement, type_entangles=self.type_entangles,
                            gen_params=self._get_new_param)
-
+            elif "PQC" in self.transformation:
+                block = PQCs(bits[:self.num_patches_qubits]+[bits[-self.image_color_base]], gen_params=self._get_new_param, pqc=int(self.transformation.split("_")[1])).circuit
 
             full_circuit.append(block)
 

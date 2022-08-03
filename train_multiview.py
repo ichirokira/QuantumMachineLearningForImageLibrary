@@ -27,7 +27,7 @@ def filter_class(x, y, config, train=True):
     N, H,W,C = x.shape
     x_split = []
     y_split = []
-    keep = (y == config.CLASSES[0])
+
     for i in range(0, len(config.CLASSES)):
         keep = (y == config.CLASSES[i])
         keepx = keep.reshape(keep.shape[0])
@@ -40,7 +40,7 @@ def filter_class(x, y, config, train=True):
             for i in range(config.ARGUMENTED_TIMES):
                 data = tf.identity(X_data)
                 data = np.random.permutation(data)
-                data = np.reshape(data, (-1,config.NUM_IMAGES, H, W, C))
+                data = np.reshape(data, (-1, config.NUM_IMAGES, H, W, C))
                 X_data_agu.append(data)
             X_data = np.concatenate(X_data_agu, axis=0)
 
@@ -50,21 +50,26 @@ def filter_class(x, y, config, train=True):
             X_data = np.reshape(X_data, (-1, config.NUM_IMAGES, H, W, C))
 
         y_data = y[keep]
-        y_data = [y_data[:config.LENGTH_DATA] for i in range(config.ARGUMENTED_TIMES)]
-        y_data = np.concatenate(y_data, axis=0)
+        length = X_data.shape[0]
+        y_data = [y_data[0] for i in range(length)]
+
+        y_data = np.array(y_data)
 
         x_split.append(X_data)
         y_split.append(y_data)
 
     x = np.concatenate(x_split, axis=0)
+
     y = np.concatenate(y_split, axis=0)
 
     idx = np.random.permutation(len(x))
-
+    #print(len(x))
     x = x[idx]
     y = y[idx]
+    # print(np.unique(y, return_counts=True))
     for i in range(len(config.CLASSES)):
         y[y==config.CLASSES[i]] = i
+
     return x, y
 
 

@@ -197,10 +197,10 @@ class PQCs:
                 break
             qubit1 = self.bits[i]
             qubit2 = self.bits[(i+1)]    
-            circuit.append(cirq.ry(new_param_fn()).on(qubit1))
-            circuit.append(cirq.rz(new_param_fn()).on(qubit1))
-            circuit.append(cirq.ry(new_param_fn()).on(qubit2))
-            circuit.append(cirq.rz(new_param_fn()).on(qubit2))
+            circuit.append(cirq.ry(gen_params()).on(qubit1))
+            circuit.append(cirq.rz(gen_params()).on(qubit1))
+            circuit.append(cirq.ry(gen_params()).on(qubit2))
+            circuit.append(cirq.rz(gen_params()).on(qubit2))
             circuit.append((cirq.CNOT(control=qubit2, target=qubit1)))
 
         return circuit
@@ -219,10 +219,10 @@ class PQCs:
                 break
             qubit1 = self.bits[i]
             qubit2 = self.bits[(i+1)]    
-            circuit.append(cirq.ry(new_param_fn()).on(qubit1))
-            circuit.append(cirq.rz(new_param_fn()).on(qubit1))
-            circuit.append(cirq.ry(new_param_fn()).on(qubit2))
-            circuit.append(cirq.rz(new_param_fn()).on(qubit2))
+            circuit.append(cirq.ry(gen_params()).on(qubit1))
+            circuit.append(cirq.rz(gen_params()).on(qubit1))
+            circuit.append(cirq.ry(gen_params()).on(qubit2))
+            circuit.append(cirq.rz(gen_params()).on(qubit2))
             circuit.append((cirq.CZ(qubit1,qubit2)))
 
         return circuit
@@ -231,24 +231,24 @@ class PQCs:
         n = len(self.bits)
 
         circuit1 = cirq.Circuit()
-        for qubit in qubits:
+        for qubit in self.bits:
             circuit1.append(cirq.ry(gen_params()).on(qubit))
 
         circuit2 = cirq.Circuit()
         for i in range(n-1, -1, -1):
-            qubit1 = qubits[i]
-            qubit2 = qubits[(i+1) % n]
+            qubit1 = self.bits[i]
+            qubit2 = self.bits[(i+1) % n]
             circuit2.append(cirq.rz(gen_params()).on(qubit2).controlled_by(qubit1))
 
         circuit3 = cirq.Circuit()
-        for qubit in qubits:
+        for qubit in self.bits:
             circuit3.append(cirq.ry(gen_params()).on(qubit))
 
         circuit4 = cirq.Circuit()
         for i in range(n):
             j = i + n//2
-            qubit1 = qubits[j % n]
-            qubit2 = qubits[(j+1) % n]
+            qubit1 = self.bits[j % n]
+            qubit2 = self.bits[(j+1) % n]
             circuit4.append(cirq.rz(gen_params()).on(qubit1).controlled_by(qubit2))
             
         circuit = cirq.Circuit()
@@ -263,24 +263,24 @@ class PQCs:
         n = len(self.bits)
 
         circuit1 = cirq.Circuit()
-        for qubit in qubits:
+        for qubit in self.bits:
             circuit1.append(cirq.ry(gen_params()).on(qubit))
 
         circuit2 = cirq.Circuit()
         for i in range(n-1, -1, -1):
-            qubit1 = qubits[i]
-            qubit2 = qubits[(i+1) % n]
+            qubit1 = self.bits[i]
+            qubit2 = self.bits[(i+1) % n]
             circuit2.append(cirq.rx(gen_params()).on(qubit2).controlled_by(qubit1))
 
         circuit3 = cirq.Circuit()
-        for qubit in qubits:
+        for qubit in self.bits:
             circuit3.append(cirq.ry(gen_params()).on(qubit))
 
         circuit4 = cirq.Circuit()
         for i in range(n):
             j = i + n//2
-            qubit1 = qubits[j % n]
-            qubit2 = qubits[(j+1) % n]
+            qubit1 = self.bits[j % n]
+            qubit2 = self.bits[(j+1) % n]
             circuit4.append(cirq.rx(gen_params()).on(qubit1).controlled_by(qubit2))
             
         circuit = cirq.Circuit()
@@ -294,24 +294,24 @@ class PQCs:
         n = len(self.bits)
 
         circuit1 = cirq.Circuit()
-        for qubit in qubits:
+        for qubit in self.bits:
             circuit1.append(cirq.ry(gen_params()).on(qubit))
 
         circuit2 = cirq.Circuit()
         for i in range(n-1, -1, -1):
-            qubit1 = qubits[i]
-            qubit2 = qubits[(i+1) % n]
+            qubit1 = self.bits[i]
+            qubit2 = self.bits[(i+1) % n]
             circuit2.append(cirq.CNOT(target=qubit2, control=qubit1))
 
         circuit3 = cirq.Circuit()
-        for qubit in qubits:
+        for qubit in self.bits:
             circuit3.append(cirq.ry(gen_params()).on(qubit))
 
         circuit4 = cirq.Circuit()
         for i in range(n):
             j = i + n//2
-            qubit1 = qubits[j % n]
-            qubit2 = qubits[(j+1) % n]
+            qubit1 = self.bits[j % n]
+            qubit2 = self.bits[(j+1) % n]
             circuit4.append(cirq.CNOT(target=qubit1, control=qubit2))
             
         circuit = cirq.Circuit()

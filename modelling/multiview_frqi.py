@@ -137,6 +137,10 @@ class Multiview_FRQI(tf.keras.layers.Layer):
             if self.transformation == "HE":
                 block = HE(bits, entangling_arrangement=self.entangling_arrangement, type_entangles=self.type_entangles,
                            gen_params=self._get_new_param)
+            elif self.transformation == "HE_Superposed":
+                block = HE_Superposed(bits[:self.num_images_qubits], bits[self.num_images_qubits:],
+                                      entangling_arrangement=self.entangling_arrangement, type_entangles=self.type_entangles,
+                                        gen_params=self._get_new_param)
 
 
             full_circuit.append(block)
